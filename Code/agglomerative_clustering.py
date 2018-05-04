@@ -7,6 +7,7 @@
 
 # Python Imports
 from tqdm import tqdm
+import numpy as np
 
 # Custom Imports
 from read_data import read_proteins, prepare_data
@@ -22,21 +23,27 @@ def similarity(protein_1, protein_2):
 	segmentor = DLGainSegmentor(protein_1+protein_2)
 	# print segmentor.segment()
 	combined_dl = segmentor.opt_dl()
-	return (p1_dl+p2_dl-combined_dl) 
+	return max(p1_dl+p2_dl-combined_dl, 0)
 
 
 if __name__ == '__main__':
+
+	# Read and prep data
 	data_2_05 = read_proteins("../Data/Data/astral-scope-95-2.05.fa")
-	data_2_06 = read_proteins("../Data/Data/astral-scope-95-2.06.fa")
-	data_2_06 = {
-		'A': data_2_06['A'].difference(data_2_05['A']),
-		'B': data_2_06['B'].difference(data_2_05['B']),
-		'C': data_2_06['C'].difference(data_2_05['C']),
-		'D': data_2_06['D'].difference(data_2_05['D']),
-	}
-
 	train_data = prepare_data(data_2_05)
-	test_data  = prepare_data(data_2_06)
 
-	for i in range(100):
-		print train_data[0][1], train_data[i][1], similarity(train_data[0][0], train_data[i][0])
+	# Select out few samples
+	np.random.shuffle(train_data)
+	train_data = train_data[:10]
+
+	# Build similarity score matrix
+	sim = np.zeros( (len(train_data), len(train_data)) )
+	for i in tqdm(range(len(train_data))):
+		for j in tqdm(range(i, len(train_data))):
+			sim[i,j] = similarity(train_data[i][0], train_data[j][0])
+			sim[j,i] = sim[i,j]
+
+	# Save matrix and samples
+	with open('sim_matrix.npy','w') as fp, open('samples.npy','w') as fs:
+		np.save(fs, train_data)
+		np.save(fp, sim)

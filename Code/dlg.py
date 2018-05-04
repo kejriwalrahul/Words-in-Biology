@@ -29,7 +29,8 @@ class DLGainSegmentor(BaseSegmentor):
 		total = 0
 		for token in self.vocab:
 			c_token = self.ctr.count(token) - (c_segment-1)*segment.count(token)
-			total -= c_token * np.log( float(c_token) / new_corpus_length )
+			if c_token > 0:
+				total -= c_token * np.log( float(c_token) / new_corpus_length )
 
 		# For new index
 		c_token = c_segment
