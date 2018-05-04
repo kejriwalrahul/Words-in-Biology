@@ -56,7 +56,7 @@ class DLGainSegmentor(BaseSegmentor):
 		string = self.corpus
 
 		OS = []
-		for k in tqdm(range(len(string)+1)):
+		for k in range(len(string)+1):
 			OS.append([])
 			curr_dlg = -float("inf")
 
