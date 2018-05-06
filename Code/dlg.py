@@ -9,6 +9,7 @@
 # Python Lib imports
 import numpy as np
 from tqdm import tqdm
+import sys
 
 # Custom Imports
 from SegBase import BaseSegmentor
@@ -57,7 +58,7 @@ class DLGainSegmentor(BaseSegmentor):
 		string = self.corpus
 
 		OS = []
-		for k in range(len(string)+1):
+		for k in tqdm(range(len(string)+1)):
 			OS.append([])
 			curr_dlg = -float("inf")
 
@@ -94,7 +95,8 @@ class DLGainSegmentor(BaseSegmentor):
 
 if __name__ == '__main__':
 
-	corpus = raw_input()
+	with open(sys.argv[1]) as fp:
+		corpus = ''.join(fp.readlines())
 
 	segmentor = DLGainSegmentor(corpus)
 	print segmentor.segment()
