@@ -66,4 +66,4 @@ class BaseSegmentor:
 		Return segmented string
 	"""
 	def segment(self):
-		return ('[' + ']['.join(self.opt_segmentation()) + ']').replace(' ','_')
+		return ('[[' + ']][['.join(self.opt_segmentation()) + ']]').replace(' ','_')

@@ -8,9 +8,25 @@
 # Python Imports
 import numpy as np
 from tqdm import tqdm
+import sys
 
 # Custom Imports
 from SegBase import BaseSegmentor
+
+
+def outward_iterator(sz):
+	# For even sizes
+	if sz%2 == 0:
+		middle = int(sz/2)
+		for dist in range(middle):
+			yield middle + dist
+			yield middle - dist - 1
+	else:
+		middle = int(sz/2)
+		yield middle
+		for dist in range(1, middle+1):
+			yield middle + dist
+			yield middle - dist
 
 
 class BranchEntropyAndMDLSegmentor(BaseSegmentor):
@@ -83,7 +99,7 @@ class BranchEntropyAndMDLSegmentor(BaseSegmentor):
 
 		tqdm_bar = tqdm(total=int(np.log(len(self.corpus))))
 		while step_size > 0:
-			print "Step - %.2f %.2f" % (curr_threshold_index, HX_vals[curr_threshold_index])
+			# print "Step - %.2f %.2f" % (curr_threshold_index, HX_vals[curr_threshold_index])
 
 			tqdm_bar.update(1)
 
@@ -121,8 +137,8 @@ class BranchEntropyAndMDLSegmentor(BaseSegmentor):
 			step_size /= 2
 		tqdm_bar.close()
 
-		print "Optimal threshold = ", HX_vals[curr_threshold_index]
-		print "Optimal threshold index = ", curr_threshold_index
+		# print "Optimal threshold = ", HX_vals[curr_threshold_index]
+		# print "Optimal threshold index = ", curr_threshold_index
 		self.init_seg = self.__segmentation_at_threshold(HX_vals[curr_threshold_index])
 		return self.init_seg
 
@@ -163,7 +179,7 @@ class BranchEntropyAndMDLSegmentor(BaseSegmentor):
 		for tok, count in tok_counts.iteritems():
 			res += count * np.log( float(count) / len(segmentation) )
 
-		print "DL   - %.2f %.2f %.2f" % (-res, -codebook_res, -res+-codebook_res)
+		# print "DL   - %.2f %.2f %.2f" % (-res, -codebook_res, -res+-codebook_res)
 		return -res + -codebook_res 
 
 
@@ -184,6 +200,285 @@ class BranchEntropyAndMDLSegmentor(BaseSegmentor):
 
 
 	"""
+		Return delta change in contribution for a given token to DL
+
+		Complexity: O(1)
+	"""
+	def __changed_dl_contribution(self, old_count, new_count):
+		return old_count * (np.log(old_count) if old_count != 0 else 0) - new_count * (np.log(new_count) if new_count != 0 else 0)
+
+
+	"""
+		Compute DL cost of Codebook given segment counts
+
+		Complexity: O(N)
+	"""
+	def __codebook_cost(self, seg_counts):
+		codebook = ''.join([key for key in seg_counts if seg_counts[key]>0])
+		codebook_counts = {}
+		for tok in codebook:
+			codebook_counts[tok] = 1 + codebook_counts.get(tok, 0)
+
+		codebook_res = 0
+		for tok, count in codebook_counts.iteritems():
+			codebook_res += count * np.log(float(count) / len(codebook))
+		return -codebook_res
+
+
+	"""
+		Do repeated splits and merges till convergence
+		
+		Complexity: ?
+	"""
+	def __split_and_merge_till_convergence_local(self):
+
+		# Sorted Positions by BranchEntropy Values
+		HX_vals = sorted(enumerate(self.HX), key= lambda x:-x[1])
+		positions = [pos for pos, val in HX_vals]
+
+		# State Vars
+		change = True
+		segmented_at = set(np.cumsum([len(el) for el in self.init_seg]))
+		N = len(self.init_seg)
+		w = {}
+		for segment in self.init_seg:
+			w[segment] = 1 + w.get(segment, 0)
+		T1 = -sum( (w[el]*np.log(w[el]) for el in w) )
+		T2 = N * np.log(N)
+		C  = self.__codebook_cost(w) 
+
+		tqdm_bar = tqdm()
+		while change:
+			change = False
+			tqdm_bar.update(1)
+
+			"""
+				Split
+			"""
+			for position in positions:
+				if position not in segmented_at:
+					
+					# Get left token
+					lftpos = position-1
+					while lftpos not in segmented_at and lftpos>=0:
+						lftpos -= 1
+					if lftpos<0: lftpos = 0
+					leftToken = self.corpus[lftpos:position]
+
+					# Get right token
+					rtpos = position
+					while rtpos not in segmented_at and rtpos<len(self.corpus):
+						rtpos += 1
+					rightToken = self.corpus[position:rtpos]
+
+					longToken = leftToken + rightToken
+
+					assert(w[longToken] -1 >= 0)
+					w_new = dict(w)
+					w_new.update({
+							leftToken:  1 + w.get(leftToken, 0), 
+							rightToken: 1 + w.get(rightToken, 0), 
+							longToken: -1 + w.get(longToken, 0), 
+						})
+					T1_new = T1 + self.__changed_dl_contribution(w.get(leftToken,0), w.get(leftToken,0)+1) + self.__changed_dl_contribution(w.get(rightToken,0), w.get(rightToken,0)+1) + self.__changed_dl_contribution(w[longToken], w[longToken]-1)
+					T2_new = (N+1) * np.log(N+1)
+					C_new  = self.__codebook_cost(w_new)
+
+					if T1_new + T2_new + C_new < T1 + T2 + C:
+						change = True
+						segmented_at.add(position) 
+						N = N+1
+						w[leftToken]  = 1 + w.get(leftToken, 0)
+						w[rightToken] = 1 + w.get(rightToken, 0)
+						w[longToken] = w.get(longToken, 0) - 1
+						T1 = T1_new 
+						T2 = T2_new
+						C  = C_new
+
+			"""
+				Merge
+			"""
+			for position in reversed(positions):
+				if position in segmented_at:			
+
+					# Get left token
+					lftpos = position-1
+					while lftpos not in segmented_at and lftpos>=0:
+						lftpos -= 1
+					if lftpos<0: lftpos = 0
+					leftToken = self.corpus[lftpos:position]
+
+					# Get right token
+					rtpos = position+1
+					while rtpos not in segmented_at and rtpos<len(self.corpus):
+						rtpos += 1
+					rightToken = self.corpus[position:rtpos]
+
+					longToken = leftToken + rightToken
+
+					assert(w[leftToken]  -1 >= 0)
+					assert(w[rightToken] -1 >= 0)
+					w_new  = dict(w)
+					w_new.update({
+							leftToken:  -1 + w.get(leftToken, 0), 
+							rightToken: -1 + w.get(rightToken, 0), 
+							longToken:   1 + w.get(longToken, 0), 
+						})
+					T1_new = T1 + self.__changed_dl_contribution(w.get(leftToken,0), w.get(leftToken,0)-1) + self.__changed_dl_contribution(w.get(rightToken,0), w.get(rightToken,0)-1) + self.__changed_dl_contribution(w.get(longToken,0), w.get(longToken,0)+1)
+					T2_new = (N-1) * np.log(N-1)
+					C_new  = self.__codebook_cost(w_new)
+
+					if T1_new + T2_new + C_new < T1 + T2 + C:
+						change = True
+						segmented_at.remove(position) 
+						N = N-1
+						w[leftToken]  = w.get(leftToken, 0)  - 1 
+						w[rightToken] = w.get(rightToken, 0) - 1
+						w[longToken]  = w.get(longToken, 0)  + 1
+						T1 = T1_new
+						T2 = T2_new
+						C  = C_new
+		
+		tqdm_bar.close()
+
+		# Final segmentation in segmented_at
+		segment_boundaries = sorted(list(segmented_at))
+		self.init_seg = []
+		prev_idx = 0
+		for seg_bound in segment_boundaries:
+			self.init_seg.append(self.corpus[prev_idx:seg_bound])
+			prev_idx = seg_bound
+		self.init_seg.append(self.corpus[prev_idx:])
+
+		return self.init_seg
+
+
+	"""
+		Do repeated splits and merges till convergence
+		
+		Complexity: ?
+	"""
+	def __split_and_merge_till_convergence_global(self):
+
+		tokens = {}
+		for token in self.init_seg:
+			tokens[token] = 1 + tokens.get(token, 0)
+		tokens = [token for token, count in sorted(list(tokens.iteritems()), key= lambda x:x[1])]
+
+		token_segments = {}
+		curr_pos = 0
+		for token in self.init_seg:
+			token_segments[token] = token_segments.get(token, set([]))
+			token_segments[token].add(curr_pos)
+			curr_pos += len(token)
+
+		# State Vars
+		change = True
+		N = len(self.init_seg)
+		w = {}
+		for segment in self.init_seg:
+			w[segment] = 1 + w.get(segment, 0)
+		T1 = -sum( (w[el]*np.log(w[el]) for el in w) )
+		T2 = N * np.log(N)
+		C  = self.__codebook_cost(w) 
+
+		# print "OLD: ", T1+T2+C
+
+		tqdm_bar = tqdm()
+		while change:
+			change = False
+			tqdm_bar.update(1)
+
+			"""
+				Split
+			"""
+			for segment in tokens:
+				for pos in outward_iterator(len(segment)):
+										
+					longToken = segment				
+					leftToken = segment[:pos]
+					rightToken = segment[pos:]
+
+					w_new = dict(w)
+					w_new.update({
+							leftToken:  w.get(longToken, 0) + w.get(leftToken, 0), 
+							rightToken: w.get(longToken, 0) + w.get(rightToken, 0), 
+							longToken:  0, 
+						})
+					T1_new = T1 + self.__changed_dl_contribution(w.get(leftToken,0), w.get(longToken, 0) + w.get(leftToken, 0)) + self.__changed_dl_contribution(w.get(rightToken,0), w.get(longToken, 0) + w.get(rightToken, 0)) + self.__changed_dl_contribution(w[longToken], 0)
+					T2_new = (N+w.get(longToken, 0)) * np.log(N+w.get(longToken, 0))
+					C_new  = self.__codebook_cost(w_new)
+
+					# print segment, pos, T1_new+T2_new+C_new
+
+					if T1_new + T2_new + C_new < T1 + T2 + C:
+						change = True
+						N = N+w.get(longToken, 0)
+						w  = w_new
+						T1 = T1_new 
+						T2 = T2_new
+						C  = C_new
+						token_segments[leftToken] = token_segments[leftToken].union(token_segments[longToken])	
+						token_segments[rightToken] = token_segments[rightToken].union([pos+len(leftToken) for pos in token_segments[longToken]])
+						token_segments[longToken] = set([])
+
+			"""
+				Merge
+			"""
+			for segment in reversed(tokens):
+				for pos in outward_iterator(len(segment)):
+					
+					longToken = segment				
+					leftToken = segment[:pos]
+					rightToken = segment[pos:]
+
+					mergable_count = 0
+					for pos in token_segments.get(leftToken, set([])):
+						if pos+len(leftToken) in token_segments.get(rightToken, set([])):
+							mergable_count += 1
+
+					w_new = dict(w)
+					w_new.update({
+							leftToken:  w.get(leftToken, 0) - mergable_count, 
+							rightToken: w.get(rightToken, 0) - mergable_count, 
+							longToken:  w.get(longToken, 0) + mergable_count, 
+						})
+					T1_new = T1 + self.__changed_dl_contribution(w.get(leftToken,0), w.get(leftToken, 0)-mergable_count) + self.__changed_dl_contribution(w.get(rightToken,0), w.get(rightToken, 0)-mergable_count) + self.__changed_dl_contribution(w[longToken], w[longToken]+mergable_count)
+					T2_new = (N-mergable_count) * np.log(N-mergable_count)
+					C_new  = self.__codebook_cost(w_new)
+
+					if T1_new + T2_new + C_new < T1 + T2 + C:
+						change = True
+						N = N-mergable_count
+						w  = w_new
+						T1 = T1_new 
+						T2 = T2_new
+						C  = C_new
+						for pos in list(token_segments.get(leftToken, set([]))):
+							if pos+len(leftToken) in token_segments.get(rightToken, set([])):
+								token_segments[leftToken].remove(pos)
+								token_segments[rightToken].remove(pos+len(leftToken))
+								token_segments[longToken].add(pos)
+		
+		tqdm_bar.close()
+
+		# Final segmentation in segmented_at
+		segmented_at = []
+		for token in token_segments:
+			segmented_at += list(token_segments[token])
+
+		segment_boundaries = sorted(list(segmented_at))
+		self.init_seg = []
+		prev_idx = 0
+		for seg_bound in segment_boundaries:
+			self.init_seg.append(self.corpus[prev_idx:seg_bound])
+			prev_idx = seg_bound
+		self.init_seg.append(self.corpus[prev_idx:])
+
+		return self.init_seg
+
+
+	"""
 		Return DL of optimal segmentation of corpus
 		
 		Complexity: O(NVlogN + NlogN) 	for uncached
@@ -200,16 +495,30 @@ class BranchEntropyAndMDLSegmentor(BaseSegmentor):
 	"""
 	def opt_segmentation(self):
 		segmentation = self.__init_seg()
-		print "Seg Length = ", len(segmentation)
+		# print "Seg Length = ", len(segmentation)
+		# print "Orig DL = ", self.dl
+		# print "Net DL = ", self.opt_dl()
+		# print segmentation
+		# print ""
+
+		segmentation = self.__split_and_merge_till_convergence_local()
+		# print "Seg Length = ", len(segmentation)
+		# print "Orig DL = ", self.dl
+		# print "Net DL = ", self.opt_dl()
+
+		segmentation = self.__split_and_merge_till_convergence_global()
+		# print "Seg Length = ", len(segmentation)
+		# print "Orig DL = ", self.dl
+		# print "Net DL = ", self.opt_dl()
+
 		return segmentation
 
 
 if __name__ == '__main__':
 
-	corpus = raw_input()
+	with open(sys.argv[1]) as fp:
+		corpus = ''.join(fp.readlines())
 
 	segmentor = BranchEntropyAndMDLSegmentor(corpus, 4)
 
 	print segmentor.segment()
-	print "Orig DL = ", segmentor.dl
-	print "Net DL = ", segmentor.opt_dl()
