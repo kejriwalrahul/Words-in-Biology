@@ -298,6 +298,7 @@ class BranchEntropyAndMDLSegmentor(BaseSegmentor):
 			"""
 				Merge
 			"""
+			# FIX BUG PLS
 			for position in reversed(positions):
 				if position in segmented_at:			
 
@@ -425,6 +426,7 @@ class BranchEntropyAndMDLSegmentor(BaseSegmentor):
 			"""
 				Merge
 			"""
+			# FIX BUG PLS
 			for segment in reversed(tokens):
 				for pos in outward_iterator(len(segment)):
 					
@@ -522,3 +524,5 @@ if __name__ == '__main__':
 	segmentor = BranchEntropyAndMDLSegmentor(corpus, 4)
 
 	print segmentor.segment()
+	print "Orig DL = ", segmentor.dl
+	print "Net DL = ", segmentor.opt_dl()

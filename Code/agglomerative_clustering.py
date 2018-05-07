@@ -14,16 +14,17 @@ from scipy.cluster.hierarchy import fclusterdata
 
 # Custom Imports
 from read_data import read_proteins, prepare_data
-from dlg import DLGainSegmentor
+#from dlg import DLGainSegmentor
+from BranchEntropyAndMDL import BranchEntropyAndMDLSegmentor
 
 
 """
 	MDL based similarity metric
 """
 def similarity(protein_1, protein_2):
-	p1_dl = DLGainSegmentor(protein_1).opt_dl()
-	p2_dl = DLGainSegmentor(protein_2).opt_dl()
-	segmentor = DLGainSegmentor(protein_1+protein_2)
+	p1_dl = BranchEntropyAndMDLSegmentor(protein_1,4).opt_dl()
+	p2_dl = BranchEntropyAndMDLSegmentor(protein_2,4).opt_dl()
+	segmentor = BranchEntropyAndMDLSegmentor(protein_1+protein_2,4)
 	# print segmentor.segment()
 	combined_dl = segmentor.opt_dl()
 	return max(p1_dl+p2_dl-combined_dl, 0) / min(len(protein_1), len(protein_2))
@@ -52,7 +53,7 @@ if __name__ == '__main__':
 
 	# Select out few samples
 	np.random.shuffle(train_data)
-	train_data = train_data[:500]
+	train_data = train_data[:250]
 
 	# Build similarity score matrix
 	sim = np.zeros( (len(train_data), len(train_data)) )
