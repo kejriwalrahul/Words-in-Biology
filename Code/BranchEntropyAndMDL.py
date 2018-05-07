@@ -419,8 +419,8 @@ class BranchEntropyAndMDLSegmentor(BaseSegmentor):
 						T1 = T1_new 
 						T2 = T2_new
 						C  = C_new
-						token_segments[leftToken] = token_segments[leftToken].union(token_segments[longToken])	
-						token_segments[rightToken] = token_segments[rightToken].union([pos+len(leftToken) for pos in token_segments[longToken]])
+						token_segments[leftToken] = token_segments.get(leftToken, set([])).union(token_segments[longToken])	
+						token_segments[rightToken] = token_segments.get(rightToken, set([])).union([pos+len(leftToken) for pos in token_segments[longToken]])
 						token_segments[longToken] = set([])
 
 			"""
