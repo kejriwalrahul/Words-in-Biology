@@ -58,16 +58,20 @@ class DLGainSegmentor(BaseSegmentor):
 		string = self.corpus
 
 		OS = []
+		DLG_vals = []
 		for k in tqdm(range(len(string)+1)):
 			OS.append([])
+			DLG_vals.append(0)
 			curr_dlg = -float("inf")
 
 			for j in range(k-1,-1,-1):
 				if self.ctr.count(string[j+1:k+1]) < 2:	break
-				try_dlg = self.__dlg(OS[j]+[string[j+1:k+1]])
+				# try_dlg = self.__dlg(OS[j]+[string[j+1:k+1]])
+				try_dlg = DLG_vals[j] + (self.dl - self.__dl_segment(string[j+1:k+1]))
 				if try_dlg > curr_dlg:
 					OS[k] = OS[j]+[string[j+1:k+1]]
 					curr_dlg = try_dlg
+					DLG_vals[-1] = try_dlg
 
 			if OS[k] == []:
 				OS[k] = OS[k-1]+[string[k]]
@@ -83,6 +87,9 @@ class DLGainSegmentor(BaseSegmentor):
 	def opt_dl(self):
 		segmentation = self.opt_segmentation()
 		
+		"""
+			Encoding Cost
+		"""
 		seg_counts = {}
 		for tok in segmentation:
 			seg_counts[tok] = 1 + seg_counts.get(tok, 0)
@@ -90,7 +97,20 @@ class DLGainSegmentor(BaseSegmentor):
 		total = 0
 		for token, count in seg_counts.iteritems():
 			total -= count * np.log( float(count) / len(segmentation) )
-		return total
+
+		"""
+			Codebook cost
+		"""
+		tokens = ''.join(seg_counts.keys())
+		char_counts = {}
+		for c in tokens:
+			char_counts[c] = 1 + char_counts.get(c, 0)
+
+		total2 = 0
+		for char, count in char_counts.iteritems():
+			total -= count * np.log( float(count) / len(tokens) )
+
+		return total + total2
 
 
 if __name__ == '__main__':

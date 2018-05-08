@@ -16,6 +16,7 @@ import numpy as np
 from keras.datasets import imdb
 from keras.models import Sequential
 from keras.layers import Dense, LSTM 
+from keras.layers.convolutional import Conv1D, MaxPooling1D
 from keras.layers.embeddings import Embedding
 from keras.preprocessing import sequence
 from sklearn.metrics import classification_report
@@ -64,14 +65,16 @@ if __name__ == '__main__':
 	print "Protein Lexemes Count =", len(vocab.keys()) + 1
 
 	# create the model
-	embedding_vecor_length = 8
+	embedding_vecor_length = 6
 	model = Sequential()
 	model.add(Embedding(len(vocab)+1, embedding_vecor_length, input_length=max_seq_length))
-	model.add(LSTM(150, dropout=0.2, recurrent_dropout=0.2))
+    	model.add(Conv1D(filters=64, kernel_size=5, padding='same', activation='relu'))
+    	model.add(MaxPooling1D(pool_size=2))	
+	model.add(LSTM(80, dropout=0.2, recurrent_dropout=0.2))
 	model.add(Dense(4, activation='sigmoid'))
 	model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 	print(model.summary())
-	model.fit(X_train, y_train, epochs=1, batch_size=64)
+	model.fit(X_train, y_train, epochs=50, batch_size=64)
 
 	# Final evaluation of the model
 	scores = model.evaluate(X_test, y_test, verbose=0)

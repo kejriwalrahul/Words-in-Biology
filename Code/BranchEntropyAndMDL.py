@@ -298,6 +298,7 @@ class BranchEntropyAndMDLSegmentor(BaseSegmentor):
 			"""
 				Merge
 			"""
+			# FIX BUG PLS
 			for position in reversed(positions):
 				if position in segmented_at:			
 
@@ -418,13 +419,14 @@ class BranchEntropyAndMDLSegmentor(BaseSegmentor):
 						T1 = T1_new 
 						T2 = T2_new
 						C  = C_new
-						token_segments[leftToken] = token_segments[leftToken].union(token_segments[longToken])	
-						token_segments[rightToken] = token_segments[rightToken].union([pos+len(leftToken) for pos in token_segments[longToken]])
+						token_segments[leftToken] = token_segments.get(leftToken, set([])).union(token_segments[longToken])	
+						token_segments[rightToken] = token_segments.get(rightToken, set([])).union([pos+len(leftToken) for pos in token_segments[longToken]])
 						token_segments[longToken] = set([])
 
 			"""
 				Merge
 			"""
+			# FIX BUG PLS
 			for segment in reversed(tokens):
 				for pos in outward_iterator(len(segment)):
 					
@@ -522,3 +524,5 @@ if __name__ == '__main__':
 	segmentor = BranchEntropyAndMDLSegmentor(corpus, 4)
 
 	print segmentor.segment()
+	print "Orig DL = ", segmentor.dl
+	print "Net DL = ", segmentor.opt_dl()
