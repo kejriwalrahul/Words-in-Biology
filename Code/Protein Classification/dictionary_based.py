@@ -101,8 +101,8 @@ def get_features(features):
 if __name__ == '__main__':
 	
 	FRESH = False
-	data = read_proteins("../Data/Data/astral-scope-95-2.05.fa")
-	data1 = read_proteins("../Data/Data/astral-scope-95-2.06.fa")
+	data = read_proteins("../Data/Protein Data/astral-scope-95-2.05.fa")
+	data1 = read_proteins("../Data/Protein Data/astral-scope-95-2.06.fa")
 	if FRESH:
 		features = get_features(data)
 		with open('tmp/features.pkl', 'wb') as fp:

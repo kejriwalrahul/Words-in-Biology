@@ -45,8 +45,8 @@ if __name__ == '__main__':
 	np.random.seed(7)
 
 	# Load Data
-	data_2_05 = read_proteins("../Data/Data/astral-scope-95-2.05.fa")
-	data_2_06 = read_proteins("../Data/Data/astral-scope-95-2.06.fa")
+	data_2_05 = read_proteins("../Data/Protein Data/astral-scope-95-2.05.fa")
+	data_2_06 = read_proteins("../Data/Protein Data/astral-scope-95-2.06.fa")
 	data_2_06 = {
 		'A': data_2_06['A'].difference(data_2_05['A']),
 		'B': data_2_06['B'].difference(data_2_05['B']),

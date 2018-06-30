@@ -56,8 +56,8 @@ def prepare_data(data):
 
 
 if __name__ == '__main__':
-	data_2_05 = read_proteins("../Data/Data/astral-scope-95-2.05.fa")
-	data_2_06 = read_proteins("../Data/Data/astral-scope-95-2.06.fa")
+	data_2_05 = read_proteins("../Data/Protein Data/astral-scope-95-2.05.fa")
+	data_2_06 = read_proteins("../Data/Protein Data/astral-scope-95-2.06.fa")
 
 	a,b,c,d = len(data_2_05['A']), len(data_2_05['B']), len(data_2_05['C']), len(data_2_05['D'])
 	print "A:%d,\tB:%d,\tC:%d,\tD:%d,\tTot:%d" % (a,b,c,d,a+b+c+d)
