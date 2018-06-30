@@ -38,7 +38,7 @@ def load_data(filename,num_features):
 	return (X,Y)
 
 if __name__ == '__main__':	
-	with open('features.pkl', 'rb') as fp:
+	with open('tmp/features.pkl', 'rb') as fp:
 		features = cPickle.load(fp)
 	
 	feature_list = get_features(features)
@@ -56,5 +56,3 @@ if __name__ == '__main__':
 	print "Accuracy: "+str(get_accuracy(predicted,test_Y))
 	
 	print(classification_report(test_Y, predicted))
-	
-		

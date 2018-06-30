@@ -105,10 +105,10 @@ if __name__ == '__main__':
 	data1 = read_proteins("../Data/Data/astral-scope-95-2.06.fa")
 	if FRESH:
 		features = get_features(data)
-		with open('features.pkl', 'wb') as fp:
+		with open('tmp/features.pkl', 'wb') as fp:
 			cPickle.dump(features, fp)
 		
-	with open('features.pkl', 'rb') as fp:
+	with open('tmp/features.pkl', 'rb') as fp:
 		features = cPickle.load(fp)
 	
 	feature_list = get_features(features)

@@ -1,0 +1,20 @@
+\begin{thebibliography}{}
+
+\bibitem[Devi et~al., 2017]{devi2017protein}
+Devi, G., Tendulkar, A.~V., and Chakraborti, S. (2017).
+\newblock Protein word detection using text segmentation techniques.
+\newblock {\em BioNLP 2017}, page 238.
+
+\bibitem[Tendulkar and Chakraborti, 2013]{tendulkar2013parallels}
+Tendulkar, A.~V. and Chakraborti, S. (2013).
+\newblock Parallels between linguistics and biology.
+\newblock {\em ACL 2013}, page 120.
+
+\bibitem[Yang et~al., 2008]{yang2008classification}
+Yang, Y., Lu, B.-l., and Yang, W.-Y. (2008).
+\newblock Classification of protein sequences based on word segmentation
+  methods.
+\newblock In {\em Proceedings of the 6th Asia-Pacific Bioinformatics
+  Conference}, pages 177--186. World Scientific.
+
+\end{thebibliography}

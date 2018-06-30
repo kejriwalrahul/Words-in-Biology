@@ -68,8 +68,8 @@ if __name__ == '__main__':
 	embedding_vecor_length = 6
 	model = Sequential()
 	model.add(Embedding(len(vocab)+1, embedding_vecor_length, input_length=max_seq_length))
-    	model.add(Conv1D(filters=64, kernel_size=5, padding='same', activation='relu'))
-    	model.add(MaxPooling1D(pool_size=2))	
+	model.add(Conv1D(filters=64, kernel_size=5, padding='same', activation='relu'))
+	model.add(MaxPooling1D(pool_size=2))	
 	model.add(LSTM(80, dropout=0.2, recurrent_dropout=0.2))
 	model.add(Dense(4, activation='sigmoid'))
 	model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
